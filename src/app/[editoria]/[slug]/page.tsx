@@ -1,22 +1,31 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Assinatura, Card, Etiqueta, ImagemDemo, Migalhas, TituloSecao } from "@/components/ui";
-import { acharNoticia, corpoDe, noticias, slug, slugTexto } from "@/dados/noticias";
+import { corpoDe, slug, slugTexto } from "@/dados/noticias";
+import { obterNoticias } from "@/dados/fonte";
 
 type P = { params: { editoria: string; slug: string } };
 
-export const generateStaticParams = () => noticias.map((n) => ({ editoria: slug(n.editoria), slug: slugTexto(n.titulo) }));
-export function generateMetadata({ params }: P): Metadata {
-  const n = acharNoticia(params.editoria, params.slug);
+export const revalidate = 60;
+
+const achar = async (p: P["params"]) =>
+  (await obterNoticias()).find((n) => slug(n.editoria) === p.editoria && slugTexto(n.titulo) === p.slug);
+
+export async function generateStaticParams() {
+  return (await obterNoticias()).map((n) => ({ editoria: slug(n.editoria), slug: slugTexto(n.titulo) }));
+}
+export async function generateMetadata({ params }: P): Promise<Metadata> {
+  const n = await achar(params);
   return n ? { title: `${n.titulo} | Comunica +`, description: n.resumo } : { title: "Comunica +" };
 }
 
-export default function PaginaNoticia({ params }: P) {
-  const n = acharNoticia(params.editoria, params.slug);
+export default async function PaginaNoticia({ params }: P) {
+  const n = await achar(params);
   if (!n) notFound();
+  const todas = await obterNoticias();
   const relacionadas = [
-    ...noticias.filter((x) => x.editoria === n.editoria && x.id !== n.id),
-    ...noticias.filter((x) => x.editoria !== n.editoria),
+    ...todas.filter((x) => x.editoria === n.editoria && x.id !== n.id),
+    ...todas.filter((x) => x.editoria !== n.editoria),
   ].slice(0, 3);
 
   return (
@@ -25,18 +34,15 @@ export default function PaginaNoticia({ params }: P) {
         <Migalhas itens={[{ rotulo: "Início", href: "/" }, { rotulo: n.editoria, href: `/${slug(n.editoria)}` }, { rotulo: "Matéria" }]} />
         <div className="mt-6"><Etiqueta texto={n.editoria} href={`/${slug(n.editoria)}`} ativa /></div>
         <h1 className="mt-4 font-serif text-3xl font-bold leading-[1.1] sm:text-5xl">{n.titulo}</h1>
-        <p className="mt-4 font-serif text-xl leading-relaxed text-azul/80">{n.resumo}</p>
+        {n.resumo && <p className="mt-4 font-serif text-xl leading-relaxed text-azul/80">{n.resumo}</p>}
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
-          <Assinatura minutos={n.minutos} />
-          <p className="font-sans text-[11px] uppercase tracking-[0.15em] text-cinza">02.11.2026 · {n.hora}</p>
+          <Assinatura minutos={n.minutos} autor={n.autor} />
+          <p className="font-sans text-[11px] uppercase tracking-[0.15em] text-cinza">{n.dataTexto ?? "02.11.2026"} · {n.hora}</p>
         </div>
-        <div className="my-6"><ImagemDemo /></div>
+        <div className="my-6"><ImagemDemo src={n.imagem} alt={n.titulo} /></div>
         <div className="space-y-5 font-serif text-lg leading-[1.6] sm:text-xl">
-          {corpoDe(n).map((p, i) => <p key={i}>{p}</p>)}
+          {(n.corpo ?? corpoDe(n)).map((p, i) => <p key={i}>{p}</p>)}
         </div>
-        <p className="mt-8 border-l-2 border-ouro pl-4 font-sans text-sm text-cinza">
-          Matéria fictícia, criada apenas para demonstração do protótipo.
-        </p>
       </article>
 
       <section className="mx-auto max-w-6xl px-4 pb-8">
