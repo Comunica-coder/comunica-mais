@@ -34,7 +34,7 @@ export default function Guarda({ children }: { children: React.ReactNode }) {
     setErro("");
     if (!sb) return;
     const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-    if (error) return setErro("E-mail ou senha incorretos.");
+        if (error) return setErro("Não foi possível entrar: " + error.message);
     setEstado("carregando");
     verificar();
   }
