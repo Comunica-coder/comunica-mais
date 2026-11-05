@@ -49,7 +49,7 @@ export async function obterNoticias(): Promise<Noticia[]> {
   return (data as unknown as Linha[]).map(paraNoticia);
 }
 
-export async function obterDados() {
+export async function obterDados(): Promise<{ todas: Noticia[]; manchete: Noticia; ultimas: Noticia[]; destaques: Noticia[]; maisLidas: Noticia[] }> {
   const todas = await obterNoticias();
   if (todas === demo) {
     return { todas, manchete: porId(1), ultimas: IDS_ULTIMAS.map(porId), destaques: IDS_DESTAQUES.map(porId), maisLidas: IDS_MAIS_LIDAS.map(porId) };
